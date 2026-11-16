@@ -8,6 +8,7 @@ Hier liegen die fertigen ZFIX-Programme zum Herunterladen. Die Links zeigen imme
 - [ZFixConvert.zip](https://github.com/stadlerzeno-ops/ZFix-Downloads/releases/latest/download/ZFixConvert.zip)
 - [ZFixFlash.zip](https://github.com/stadlerzeno-ops/ZFix-Downloads/releases/latest/download/ZFixFlash.zip)
 - [ZFixShift.zip](https://github.com/stadlerzeno-ops/ZFix-Downloads/releases/latest/download/ZFixShift.zip)
+- [ZFixSign-Setup.exe](https://github.com/stadlerzeno-ops/ZFix-Downloads/releases/latest/download/ZFixSign-Setup.exe)
 - [ZFixView.zip](https://github.com/stadlerzeno-ops/ZFix-Downloads/releases/latest/download/ZFixView.zip)
 - [ZFixView-Kundenanleitung-Mac.pdf](https://github.com/stadlerzeno-ops/ZFix-Downloads/releases/latest/download/ZFixView-Kundenanleitung-Mac.pdf)
 - [ZFixView-Kundenanleitung-Windows.pdf](https://github.com/stadlerzeno-ops/ZFix-Downloads/releases/latest/download/ZFixView-Kundenanleitung-Windows.pdf)
@@ -21,4 +22,5 @@ Alle Versionen: [Releases](https://github.com/stadlerzeno-ops/ZFix-Downloads/rel
 
 - **ZFix View** enthält bzw. lädt **RustDesk** unverändert (GNU AGPL-3.0). Quellcode: https://github.com/rustdesk/rustdesk. Details in `RUSTDESK-LIZENZ.txt` im ZIP.
 - **ZFix Boot-Logo** und **ZFix Flash** verwenden **HackBGRT** (MIT-Lizenz, https://github.com/Metabolix/HackBGRT).
+- **ZFix Sign** verwendet **PDFsharp** (MIT-Lizenz, https://github.com/empira/PDFsharp); das Setup ist mit **Inno Setup** gebaut.
 - **ZFix Convert** lädt freie Werkzeuge (FFmpeg, ImageMagick, Ghostscript, qpdf, Pandoc, LibreOffice) und enthält 7-Zip. Details in `LIZENZEN.txt` im ZIP.
