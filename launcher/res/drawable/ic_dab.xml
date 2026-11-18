@@ -1,0 +1,5 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+<!-- DAB+ wordmark as outline, same stroke style as the CarPlay and Android Auto icons -->
+<path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.8" android:fillColor="#00000000" android:strokeLineCap="round" android:strokeLineJoin="round"
+    android:pathData="M3.5,17v14h3.5a7,7 0 0 0 0,-14zM16,31 21.5,17 27,31M18,26h7M30.5,17v14h5a3.6,3.6 0 0 0 0,-7.2h-5M30.5,17h4.3a3.4,3.4 0 0 1 0,6.8M43.5,9.5v7M40,13h7"/>
+</vector>

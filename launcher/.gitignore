@@ -1,0 +1,6 @@
+build/
+out/
+versionen.json
+*.keystore
+__pycache__/
+tempolimit-kacheln/
