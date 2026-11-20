@@ -884,7 +884,7 @@ public class MainActivity extends Activity {
                         if (KeyBar.instance != null) KeyBar.instance.refresh();
                         recreate();
                     }
-                    if (which == 8) showCarPanel();
+                    if (which == 8) showCarDash();
                     if (which == 9) {
                         boolean on = KeyBar.wanted(MainActivity.this);
                         if (on && keyBarEnabled()) prefs.edit().putString(KeyBar.PREF, "aus").apply();
@@ -1198,6 +1198,7 @@ public class MainActivity extends Activity {
         lastObdUi = now;
         updateCarBar();
         if (carDetail != null) carDetail.setText(carDetailText());
+        updateCarDash();
     }
 
     private void buildCarBar(FrameLayout root) {
@@ -1207,7 +1208,7 @@ public class MainActivity extends Activity {
         carBar.setPadding(px(26), 0, px(26), 0);
         root.addView(carBar, at(px(36), px(720 - 36 - CAR_BAR_H), px(1280 - 400 - 36), px(CAR_BAR_H)));
         carBar.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) { showCarPanel(); }
+            @Override public void onClick(View v) { showCarDash(); }
         });
         carMsg = text("", 20, DIM, false);
         carBar.addView(carMsg, new LinearLayout.LayoutParams(0, -2, 1));
@@ -1266,6 +1267,129 @@ public class MainActivity extends Activity {
         }
         if (Obd.dtcResult != null) sb.append("\nFehlercodes Motor:  ").append(Obd.dtcResult).append("\n");
         return sb.toString().trim();
+    }
+
+    // ---------------------------------------------------------------- vehicle page (like the Uconnect trip computer)
+
+    private TextView[] dashVal, dashLab;
+    private TextView dashMsg, dashTripBtn, dashDtcBtn;
+    private int dashTrip = Trip.FAHRT;
+    private static final int DASH_N = 12;
+
+    /** Full-screen vehicle page: 12 big tiles (consumption, range, trip, temperatures, battery ...). */
+    private void showCarDash() {
+        final LinearLayout content = overlay("Fahrzeug · " + profile.name);
+        Trip.load(this);
+        dashMsg = text("", 20, DIM, false);
+        LinearLayout.LayoutParams ml = new LinearLayout.LayoutParams(-1, -2);
+        ml.bottomMargin = px(12);
+        content.addView(dashMsg, ml);
+        dashVal = new TextView[DASH_N];
+        dashLab = new TextView[DASH_N];
+        final int cols = 4;
+        LinearLayout row = null;
+        for (int k = 0; k < DASH_N; k++) {
+            if (k % cols == 0) {
+                row = new LinearLayout(this);
+                LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(-1, px(128));
+                rl.bottomMargin = px(14);
+                content.addView(row, rl);
+            }
+            LinearLayout cell = new LinearLayout(this);
+            cell.setOrientation(LinearLayout.VERTICAL);
+            cell.setGravity(Gravity.CENTER_VERTICAL);
+            cell.setPadding(px(22), 0, px(12), 0);
+            cell.setBackground(card(CARD_FILL, 20));
+            dashLab[k] = text("", 15, 0xFF888888, true);
+            dashLab[k].setLetterSpacing(0.12f);
+            cell.addView(dashLab[k]);
+            dashVal[k] = text("–", 40, WHITE, false);
+            LinearLayout.LayoutParams vl = new LinearLayout.LayoutParams(-2, -2);
+            vl.topMargin = px(10);
+            cell.addView(dashVal[k], vl);
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, -1, 1);
+            if (k % cols != 0) cl.leftMargin = px(14);
+            row.addView(cell, cl);
+        }
+        LinearLayout btns = new LinearLayout(this);
+        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(-1, px(92));
+        bl.topMargin = px(4);
+        bl.bottomMargin = px(24);
+        content.addView(btns, bl);
+        dashTripBtn = dashButton(btns, "", new Runnable() { @Override public void run() {
+            dashTrip = dashTrip == Trip.FAHRT ? Trip.GESAMT : Trip.FAHRT; updateCarDash(); } });
+        dashButton(btns, "GESAMT AUF NULL", new Runnable() { @Override public void run() {
+            Trip.resetGesamt(Obd.fresh(Obd.FUEL) ? Obd.val[Obd.FUEL] : -1);
+            dashTrip = Trip.GESAMT; updateCarDash(); } });
+        dashDtcBtn = dashButton(btns, "FEHLERCODES LESEN", new Runnable() { @Override public void run() {
+            if (!Obd.connected) Obd.dtcResult = "Erst Zündung an";
+            else { Obd.dtcResult = "wird gelesen"; Obd.wantDtc = true; }
+            updateCarDash(); } });
+        dashButton(btns, "OBD-ADAPTER", new Runnable() { @Override public void run() {
+            closeOverlay(content); showCarPanel(); } });
+        ((View) content.getTag()).addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View v) { }
+            @Override public void onViewDetachedFromWindow(View v) { dashVal = null; }
+        });
+        updateCarDash();
+    }
+
+    private TextView dashButton(LinearLayout parent, String label, final Runnable r) {
+        TextView b = text(label, 20, WHITE, true);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(px(10), 0, px(10), 0);
+        b.setBackground(card(CARD_FILL, 20));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, -1, 1);
+        if (parent.getChildCount() > 0) lp.leftMargin = px(14);
+        parent.addView(b, lp);
+        b.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { r.run(); } });
+        return b;
+    }
+
+    private void dash(int k, String label, String value, int color) {
+        dashLab[k].setText(label);
+        dashVal[k].setText(value == null ? "–" : value);
+        dashVal[k].setTextColor(value == null ? DIM : color);
+    }
+
+    private String obdNum(int k, String fmt) {
+        return Obd.fresh(k) ? String.format(Locale.GERMAN, fmt, Obd.val[k]) : null;
+    }
+
+    private void updateCarDash() {
+        if (dashVal == null) return;
+        boolean on = Obd.connected;
+        float tank = Obd.fresh(Obd.FUEL) ? Obd.val[Obd.FUEL] : -1;
+        float kmh = Obd.fresh(Obd.SPEED) ? Obd.val[Obd.SPEED] : Math.max(0, currentSpeed);
+        int t = dashTrip;
+        dashMsg.setText(on ? "Verbunden mit " + Obd.adapterName + "   ·   Werte ohne Angabe liefert das Auto nicht"
+                : ("aus".equals(profile.obd) ? "Fahrzeugdaten sind aus · unten OBD-ADAPTER antippen" : Obd.state)
+                  + "   ·   Fahrtwerte vom letzten Mal");
+        float avg = Trip.average(t, tank);
+        int range = Trip.range(tank);
+        dash(0, "VERBRAUCH JETZT", on ? Trip.now(kmh) : null, WHITE);
+        dash(1, t == Trip.FAHRT ? "Ø VERBRAUCH FAHRT" : "Ø VERBRAUCH GESAMT",
+                avg > 0 ? String.format(Locale.GERMAN, "%.1f l/100", avg) : null, WHITE);
+        dash(2, "REICHWEITE", range >= 0 ? range + " km" : null, range >= 0 && range < 60 ? RED : WHITE);
+        dash(3, "TANK", tank >= 0 ? Math.round(tank) + " %" : null, tank >= 0 && tank < 12 ? RED : WHITE);
+        double km = Trip.km[t];
+        dash(4, t == Trip.FAHRT ? "STRECKE FAHRT" : "STRECKE GESAMT",
+                String.format(Locale.GERMAN, km < 100 ? "%.1f km" : "%.0f km", km), WHITE);
+        long s = Math.round(Trip.sec[t]);
+        dash(5, "FAHRZEIT", String.format(Locale.GERMAN, "%d:%02d h", s / 3600, (s / 60) % 60), WHITE);
+        dash(6, "Ø TEMPO", Trip.sec[t] > 60 ? Math.round(km / (Trip.sec[t] / 3600)) + " km/h" : null, WHITE);
+        dash(7, "BATTERIE", obdNum(Obd.VOLT, "%.1f V"), Obd.fresh(Obd.VOLT) && Obd.val[Obd.VOLT] < 11.8f ? RED : WHITE);
+        dash(8, "KÜHLWASSER", obdNum(Obd.COOLANT, "%.0f °C"),
+                Obd.fresh(Obd.COOLANT) && Obd.val[Obd.COOLANT] >= 108 ? RED : WHITE);
+        if (Obd.fresh(Obd.OIL)) dash(9, "ÖLTEMPERATUR", obdNum(Obd.OIL, "%.0f °C"), WHITE);
+        else dash(9, "ANSAUGLUFT", obdNum(Obd.INTAKE, "%.0f °C"), WHITE);
+        dash(10, "AUSSEN", obdNum(Obd.AMBIENT, "%.0f °C"), WHITE);
+        if (Obd.fresh(Obd.BOOST)) dash(11, "LADEDRUCK", obdNum(Obd.BOOST, "%.1f bar"), WHITE);
+        else dash(11, "DREHZAHL", Obd.fresh(Obd.RPM) ? String.valueOf(Math.round(Obd.val[Obd.RPM] / 10) * 10) : null, WHITE);
+        dashTripBtn.setText(t == Trip.FAHRT ? "ANZEIGE: DIESE FAHRT" : "ANZEIGE: GESAMT");
+        String dtc = Obd.dtcResult;
+        dashDtcBtn.setText(dtc == null ? "FEHLERCODES LESEN" : dtc.toUpperCase(Locale.GERMAN));
+        dashDtcBtn.setTextColor(dtc != null && dtc.matches(".*[PCBU][0-9].*") ? RED : WHITE);
     }
 
     /** "Fahrzeug" panel: live values, fault codes and the choice of OBD adapter. */
@@ -1560,6 +1684,7 @@ public class MainActivity extends Activity {
         if (mps >= 0) { smooth = smooth < 0 ? mps : smooth * 0.5f + mps * 0.5f; mps = smooth; }
         currentSpeed = mps < 0 ? -1 : Math.round(mps * 3.6f);
         if (currentSpeed >= 0 && currentSpeed < 3) currentSpeed = 0;
+        if (currentSpeed >= 0) { Trip.gpsKmh = currentSpeed; Trip.gpsAt = System.currentTimeMillis(); }
         if (!Obd.fresh(Obd.SPEED)) {   // with an OBD adapter the car's own speed is shown, GPS only finds the limit
             speedUnit.setText("km/h · aktuell");
             showSpeed(currentSpeed < 0 ? "–" : String.valueOf(currentSpeed));

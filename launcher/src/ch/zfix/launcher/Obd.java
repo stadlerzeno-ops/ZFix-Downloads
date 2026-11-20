@@ -81,10 +81,12 @@ final class Obd {
 
     private static void loop(Context c, String mode, String host, String btAddress) {
         int fails = 0;
+        Trip.load(c);
         while (run) {
             try {
                 if ("wlan".equals(mode)) openWifi(host); else openBt(btAddress);
                 init();
+                Trip.connected();
                 fails = 0;
                 poll();
             } catch (Exception e) {
@@ -92,6 +94,7 @@ final class Obd {
                 if (e.getMessage() != null) state = e.getMessage();
                 fails++;
             } finally {
+                Trip.save();
                 connected = false;
                 closeQuietly(sock);
                 sock = null;
@@ -275,6 +278,12 @@ final class Obd {
                 if (d != null && d.length >= 2) put(VOLT, (d[0] * 256 + d[1]) / 1000f);
                 else readAdapterVoltage();
             }
+            // trip computer: fuel flow (PID 5E, l/h) when the engine control unit reports it
+            float lh = -1;
+            d = ask(0x5E);
+            if (d != null && d.length >= 2) lh = (d[0] * 256 + d[1]) / 20f;
+            boolean running = fresh(RPM) && val[RPM] > 300;
+            Trip.tick(fresh(SPEED) ? val[SPEED] : 0, running, lh, fresh(FUEL) ? val[FUEL] : -1);
             if (wantDtc) { wantDtc = false; dtcResult = readDtc(); }
             if (misses > 5) throw new Exception("Zündung aus");
             notifyUi();
