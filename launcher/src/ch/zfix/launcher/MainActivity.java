@@ -850,7 +850,7 @@ public class MainActivity extends Activity {
         String[] items = {upd > 0 ? "Update  ·  neue Version bereit" : "Update suchen", "Android-Einstellungen", "Alle Apps", "Kachel-Apps zurücksetzen", "Jetzt-läuft-Zugriff erlauben",
                 "Entwickleroptionen", "Tempolimit-Karten: " + limits.tileCount() + " Kacheln gespeichert",
                 "Fahrzeug: " + profile.name + (profile.ducato() ? "  ·  zu Opel Agila wechseln" : "  ·  zu Fiat Ducato wechseln"),
-                "Fahrzeugdaten und OBD-Adapter", "Tasten links (Zurück · Home · Lauter · Leiser): " + keyBarState()};
+                "Fahrzeugdaten und OBD-Adapter", "Tasten links (Zurück · Home · Lauter · Leiser): " + keyBarState(), "CAN-Suche (Daten der CAN-Box finden)"};
         for (int n = 0; n < items.length; n++) {
             final int which = n;
             TextView b = text(items[n], 24, WHITE, true);
@@ -885,6 +885,7 @@ public class MainActivity extends Activity {
                         recreate();
                     }
                     if (which == 8) showCarDash();
+                    if (which == 10) showCanScan();
                     if (which == 9) {
                         boolean on = KeyBar.wanted(MainActivity.this);
                         if (on && keyBarEnabled()) prefs.edit().putString(KeyBar.PREF, "aus").apply();
@@ -1267,6 +1268,29 @@ public class MainActivity extends Activity {
         }
         if (Obd.dtcResult != null) sb.append("\nFehlercodes Motor:  ").append(Obd.dtcResult).append("\n");
         return sb.toString().trim();
+    }
+
+    /** ZFix menu > CAN-Suche: report + vendor apps to Download/ZFix-CAN for examination on the Mac. */
+    private void showCanScan() {
+        final LinearLayout content = overlay("CAN-Suche");
+        final TextView t = text("Suche läuft, das dauert bis zu einer Minute ...", 22, WHITE, false);
+        t.setSingleLine(false);
+        t.setMaxLines(100000);
+        t.setLineSpacing(px(4), 1f);
+        content.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final String rep = CanScan.run(MainActivity.this, new CanScan.Progress() {
+                    @Override public void step(final String x) {
+                        ui.post(new Runnable() { @Override public void run() { t.setText("Suche läuft ...\n" + x); } });
+                    }
+                });
+                ui.post(new Runnable() { @Override public void run() {
+                    t.setTextSize(TypedValue.COMPLEX_UNIT_PX, 15 * s);
+                    t.setText("FERTIG. Bitte den Ordner Download/ZFix-CAN auf einen USB-Stick kopieren und an den Mac geben.\n\n" + rep);
+                } });
+            }
+        }, "zfix-can-scan").start();
     }
 
     // ---------------------------------------------------------------- vehicle page (like the Uconnect trip computer)
