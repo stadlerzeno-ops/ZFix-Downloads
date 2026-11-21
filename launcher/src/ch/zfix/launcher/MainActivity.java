@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.pm.ActivityInfo;
 import android.content.pm.ResolveInfo;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -593,8 +594,15 @@ public class MainActivity extends Activity {
                 if (p.contains(kw) || l.contains(kw)) return r.activityInfo.packageName;
             }
         }
+        // Projection apps (ZLink/CarLink) are often system apps without a launcher icon, so they
+        // never show up in launchableApps(). Fall back to the known packages if one is installed.
+        if (i == TILE_PHONE) for (String pkg : PROJECTION_PKGS) if (isInstalled(pkg)) return pkg;
         return null;
     }
+
+    /** CarPlay/Android Auto front screens. NWD (Ducato) = ZLink5 com.zjinnova.zlink; Topway = carlink/zlink. */
+    private static final String[] PROJECTION_PKGS = {
+            "com.zjinnova.zlink", "com.zjinco.zlink", "com.carlinkit", "net.easyconn", "com.autokit.ac"};
 
     private String dabPkg;   // app on the DAB+ tile, refreshed with the tiles (showMedia runs every 5 s)
 
@@ -723,8 +731,17 @@ public class MainActivity extends Activity {
     }
 
     private boolean launch(String pkg) {
-        Intent i = getPackageManager().getLaunchIntentForPackage(pkg);
-        if (i == null) return false;
+        PackageManager pm = getPackageManager();
+        Intent i = pm.getLaunchIntentForPackage(pkg);
+        if (i == null) {
+            // System projection apps (ZLink) have no launcher icon: start their main activity directly.
+            Intent main = new Intent(Intent.ACTION_MAIN).setPackage(pkg);
+            List<ResolveInfo> acts = pm.queryIntentActivities(main, 0);
+            if (acts.isEmpty()) acts = pm.queryIntentActivities(new Intent().setPackage(pkg), 0);
+            if (acts.isEmpty()) return false;
+            ActivityInfo ai = acts.get(0).activityInfo;
+            i = new Intent(Intent.ACTION_MAIN).setComponent(new ComponentName(ai.packageName, ai.name));
+        }
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try { startActivity(i); return true; } catch (Exception e) { return false; }
     }
