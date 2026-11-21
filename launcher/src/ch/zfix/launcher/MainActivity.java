@@ -188,6 +188,8 @@ public class MainActivity extends Activity {
         updateBadge();
         if (profile.fromFile || prefs.contains("p_fahrzeug")) offerKeyBar();
         askCarIfUnknown();
+        syncCarAlias();
+        if (openedAsCarApp(getIntent())) { setIntent(new Intent()); showCarDash(); }
         lm = (LocationManager) getSystemService(LOCATION_SERVICE);
         limits = new LimitCache(this);
         msm = (MediaSessionManager) getSystemService(MEDIA_SESSION_SERVICE);
@@ -462,6 +464,8 @@ public class MainActivity extends Activity {
         t.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 String pkg = tilePackage(i);
+                // DAB+ box car without ZFix DAB yet: offer it from the update page instead of opening an FM app
+                if (i == TILE_NOXON && !profile.noxonAllowed() && !isInstalled("ch.zfix.dab")) { showUpdate(); return; }
                 if (i >= TILE_NOXON) pausePhoneAudio(pkg);
                 if (i == TILE_MAP) { if (pkg == null || !launchMap(pkg)) pickAppForTile(i); return; }
                 if (i == TILE_PHONE && pkg != null && launch(pkg)) { setSource(i); return; }
@@ -828,6 +832,7 @@ public class MainActivity extends Activity {
             cell.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
                     closeOverlay(content);
+                    if (r.activityInfo.name.endsWith(".Fahrzeugdaten")) { showCarDash(); return; }
                     cb.picked(r.activityInfo.packageName);
                 }
             });
@@ -875,8 +880,7 @@ public class MainActivity extends Activity {
                     if (which == 4) startActivity(new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                     // opened directly, the radio's own settings menu (and its code prompt) is skipped (tested 2026-10-17)
                     if (which == 5) {
-                        try { startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
-                        catch (Exception e) { startActivity(new Intent(Settings.ACTION_DEVICE_INFO_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+                        openDevOptions();
                     }
                     if (which == 7) {
                         prefs.edit().putString("p_fahrzeug", profile.ducato() ? Profile.AGILA : Profile.DUCATO).remove("p_obd").apply();
@@ -1165,7 +1169,29 @@ public class MainActivity extends Activity {
         sendBroadcast(t);
     }
 
-    private boolean showCarBar() { return profile.ducato() || !"aus".equals(profile.obd); }
+    /** 3.4: vehicle data no longer on the home screen (Zeno), only as the app "Fahrzeugdaten". */
+    private boolean showCarBar() { return false; }
+
+    private boolean carDataOn() { return profile.ducato() || !"aus".equals(profile.obd); }
+
+    /** Shows/hides the "Fahrzeugdaten" entry in the app lists. */
+    private void syncCarAlias() {
+        try {
+            getPackageManager().setComponentEnabledSetting(new ComponentName(this, getPackageName() + ".Fahrzeugdaten"),
+                    carDataOn() ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP);
+        } catch (Exception ignored) { }
+    }
+
+    private boolean openedAsCarApp(Intent i) {
+        return i != null && i.getComponent() != null && i.getComponent().getClassName().endsWith(".Fahrzeugdaten");
+    }
+
+    @Override
+    protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        if (openedAsCarApp(i)) { setIntent(new Intent()); ui.post(new Runnable() { @Override public void run() { showCarDash(); } }); }
+    }
 
     private boolean btPermAsked;
 
@@ -1271,6 +1297,17 @@ public class MainActivity extends Activity {
         return sb.toString().trim();
     }
 
+    /** Opens Android's developer options page directly (skips the build-number taps and the radio's code prompt). */
+    private void openDevOptions() {
+        Intent[] tries = {
+                new Intent().setClassName("com.android.settings", "com.android.settings.Settings$DevelopmentSettingsDashboardActivity"),
+                new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
+                new Intent(Settings.ACTION_DEVICE_INFO_SETTINGS)};
+        for (Intent i : tries) {
+            try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return; } catch (Exception ignored) { }
+        }
+    }
+
     /** The radio maker's own setting screens (NWD K4811 in the Ducato), opened directly without their menus. */
     private static final String[][] RADIO_TOOLS = {
             {"CAN-Box: Auto und Protokoll wählen", "com.nwd.can.setting", "com.nwd.can.setting.ui.app.canfactory.CanFactoryActivity"},
@@ -1280,6 +1317,7 @@ public class MainActivity extends Activity {
             {"360°- und Rückfahrkamera", "com.ivicar.avm", "com.ivicar.modules.main.view.MainNowadaActivity"},
             {"Werkseinstellungen", "com.nwd.factory.setting", "com.nwd.factory.setting.FactorySettingActivity"},
             {"Entwickleroptionen (Android)", "com.android.settings", null},
+            {"EngineerMode (Unisoc-Diagnose)", "com.sprd.engineermode", "com.sprd.engineermode.EngineerModeActivity"},
     };
 
     private void showRadioTools() {
@@ -1291,8 +1329,8 @@ public class MainActivity extends Activity {
             TextView b = bigButton(t[0], 24, 84, content);
             b.setOnClickListener(new View.OnClickListener() {
                 @Override public void onClick(View v) {
-                    Intent i = t[2] == null ? new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
-                            : new Intent().setClassName(t[1], t[2]);
+                    if (t[2] == null) { openDevOptions(); return; }
+                    Intent i = new Intent().setClassName(t[1], t[2]);
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     try { startActivity(i); }
                     catch (Exception e) {
