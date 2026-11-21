@@ -990,8 +990,10 @@ public class MainActivity extends Activity {
                 });
             }
             for (final Updater.App a : apps) {
-                // other ZFix apps are only offered when installed, except the DAB+ app in a car with a DAB+ box profile
-                if (a.missing() && !(a.pkg.equals("ch.zfix.dab") && !profile.noxonAllowed())) continue;
+                // other ZFix apps are only offered when installed, except the DAB+ app in a car with a DAB+
+                // box profile and the NWD FM app (ZFix Radio) in the Ducato
+                if (a.missing() && !(a.pkg.equals("ch.zfix.dab") && !profile.noxonAllowed())
+                        && !(a.pkg.equals("ch.zfix.fmradio") && profile.ducato())) continue;
                 String state = a.missing() ? "nicht installiert · neu " + a.version
                         : a.newer() ? "installiert " + a.installedVersion + "  ·  neu " + a.version
                         : "Version " + a.installedVersion + "  ·  aktuell";

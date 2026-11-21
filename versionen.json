@@ -3,11 +3,11 @@
     {
       "paket": "ch.zfix.launcher",
       "name": "ZFix Launcher",
-      "version": "3.7",
-      "code": 28,
-      "datei": "ZFix-Launcher-3.7.apk",
-      "bytes": 164185,
-      "sha256": "db0605a2b0c912a2e73a0445950ba5f6a0f31bdd7895885a46ff57cfbbf21f4f"
+      "version": "3.8",
+      "code": 29,
+      "datei": "ZFix-Launcher-3.8.apk",
+      "bytes": 164211,
+      "sha256": "367026109e340580e7a73b1d746a211cbb5ec652f51bccd5e961c37530e81e41"
     },
     {
       "paket": "ch.zfix.dab",
@@ -17,6 +17,15 @@
       "datei": "ZFix-DAB-1.3.apk",
       "bytes": 1099836,
       "sha256": "d5a6ce97fb7cc18c877aaac8b0feeeca726b47492091c69cc975e34268add626"
+    },
+    {
+      "paket": "ch.zfix.fmradio",
+      "name": "ZFix Radio",
+      "version": "1.0",
+      "code": 1,
+      "datei": "ZFix-Radio-1.0.apk",
+      "bytes": 20035,
+      "sha256": "ab2518b502cc61201dab92943dfe3c3be71cfc306908d589594c1c3d8c08451b"
     }
   ]
 }

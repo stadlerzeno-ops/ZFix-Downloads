@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#0B0B0C" android:pathData="M0,0h108v108h-108z"/>
+    <!-- broadcast tower / waves, ZFix white stencil -->
+    <path android:strokeColor="#F2F2F2" android:strokeWidth="4" android:fillColor="#00000000"
+        android:pathData="M54,46 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0"/>
+    <path android:strokeColor="#F2F2F2" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M54,52 L50,82 M54,52 L58,82 M48,84 h12"/>
+    <path android:strokeColor="#F2F2F2" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M40,34 a20,20 0 0,0 0,24 M68,34 a20,20 0 0,1 0,24"/>
+    <path android:strokeColor="#9A9A9A" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M31,27 a30,30 0 0,0 0,38 M77,27 a30,30 0 0,1 0,38"/>
+</vector>
