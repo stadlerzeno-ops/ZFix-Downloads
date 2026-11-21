@@ -3,11 +3,11 @@
     {
       "paket": "ch.zfix.launcher",
       "name": "ZFix Launcher",
-      "version": "3.2",
-      "code": 23,
-      "datei": "ZFix-Launcher-3.2.apk",
-      "bytes": 159848,
-      "sha256": "feec07eb11ebe40a70e17c526f2e4fc9fc7ef683d09dfc0f682398331fe49ddd"
+      "version": "3.3",
+      "code": 24,
+      "datei": "ZFix-Launcher-3.3.apk",
+      "bytes": 160404,
+      "sha256": "aca98bc28db57b037f7c9b4c767fdf888f8fc8f79796c1e0ba228b57a23861ea"
     },
     {
       "paket": "ch.zfix.dab",

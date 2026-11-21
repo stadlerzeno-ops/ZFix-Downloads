@@ -850,7 +850,7 @@ public class MainActivity extends Activity {
         String[] items = {upd > 0 ? "Update  ·  neue Version bereit" : "Update suchen", "Android-Einstellungen", "Alle Apps", "Kachel-Apps zurücksetzen", "Jetzt-läuft-Zugriff erlauben",
                 "Entwickleroptionen", "Tempolimit-Karten: " + limits.tileCount() + " Kacheln gespeichert",
                 "Fahrzeug: " + profile.name + (profile.ducato() ? "  ·  zu Opel Agila wechseln" : "  ·  zu Fiat Ducato wechseln"),
-                "Fahrzeugdaten und OBD-Adapter", "Tasten links (Zurück · Home · Lauter · Leiser): " + keyBarState(), "CAN-Suche (Daten der CAN-Box finden)"};
+                "Fahrzeugdaten und OBD-Adapter", "Tasten links (Zurück · Home · Lauter · Leiser): " + keyBarState(), "CAN-Suche (Daten der CAN-Box finden)", "Radio-Einstellungen (CAN-Box, Lenkrad, Kamera)"};
         for (int n = 0; n < items.length; n++) {
             final int which = n;
             TextView b = text(items[n], 24, WHITE, true);
@@ -886,6 +886,7 @@ public class MainActivity extends Activity {
                     }
                     if (which == 8) showCarDash();
                     if (which == 10) showCanScan();
+                    if (which == 11) showRadioTools();
                     if (which == 9) {
                         boolean on = KeyBar.wanted(MainActivity.this);
                         if (on && keyBarEnabled()) prefs.edit().putString(KeyBar.PREF, "aus").apply();
@@ -1268,6 +1269,40 @@ public class MainActivity extends Activity {
         }
         if (Obd.dtcResult != null) sb.append("\nFehlercodes Motor:  ").append(Obd.dtcResult).append("\n");
         return sb.toString().trim();
+    }
+
+    /** The radio maker's own setting screens (NWD K4811 in the Ducato), opened directly without their menus. */
+    private static final String[][] RADIO_TOOLS = {
+            {"CAN-Box: Auto und Protokoll wählen", "com.nwd.can.setting", "com.nwd.can.setting.ui.app.canfactory.CanFactoryActivity"},
+            {"CAN-Einstellungen", "com.nwd.can.setting", "com.nwd.can.setting.ui.MainActivity"},
+            {"Lenkradtasten lernen", "com.nwd.toolallinone.app", "com.nwd.wheel.learning.MainActivity"},
+            {"Fahrzeuginfo der CAN-Box", "com.nwd.mycar", "com.nwd.mycar.MainActivity"},
+            {"360°- und Rückfahrkamera", "com.ivicar.avm", "com.ivicar.modules.main.view.MainNowadaActivity"},
+            {"Werkseinstellungen", "com.nwd.factory.setting", "com.nwd.factory.setting.FactorySettingActivity"},
+            {"Entwickleroptionen (Android)", "com.android.settings", null},
+    };
+
+    private void showRadioTools() {
+        final LinearLayout content = overlay("Radio-Einstellungen");
+        int shown = 0;
+        for (final String[] t : RADIO_TOOLS) {
+            if (!isInstalled(t[1])) continue;
+            shown++;
+            TextView b = bigButton(t[0], 24, 84, content);
+            b.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    Intent i = t[2] == null ? new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                            : new Intent().setClassName(t[1], t[2]);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    try { startActivity(i); }
+                    catch (Exception e) {
+                        Intent l = getPackageManager().getLaunchIntentForPackage(t[1]);
+                        if (l != null) startActivity(l.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                    }
+                }
+            });
+        }
+        if (shown <= 1) content.addView(text("Für dieses Radio sind keine Einstellungen hinterlegt.", 22, DIM, false));
     }
 
     /** ZFix menu > CAN-Suche: report + vendor apps to Download/ZFix-CAN for examination on the Mac. */
