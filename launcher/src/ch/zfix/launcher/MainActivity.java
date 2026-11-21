@@ -190,6 +190,7 @@ public class MainActivity extends Activity {
         askCarIfUnknown();
         syncCarAlias();
         if (openedAsCarApp(getIntent())) { setIntent(new Intent()); showCarDash(); }
+        if (isAssistIntent(getIntent())) setIntent(new Intent());
         lm = (LocationManager) getSystemService(LOCATION_SERVICE);
         limits = new LimitCache(this);
         msm = (MediaSessionManager) getSystemService(MEDIA_SESSION_SERVICE);
@@ -855,7 +856,7 @@ public class MainActivity extends Activity {
         String[] items = {upd > 0 ? "Update  ·  neue Version bereit" : "Update suchen", "Android-Einstellungen", "Alle Apps", "Kachel-Apps zurücksetzen", "Jetzt-läuft-Zugriff erlauben",
                 "Entwickleroptionen", "Tempolimit-Karten: " + limits.tileCount() + " Kacheln gespeichert",
                 "Fahrzeug: " + profile.name + (profile.ducato() ? "  ·  zu Opel Agila wechseln" : "  ·  zu Fiat Ducato wechseln"),
-                "Fahrzeugdaten und OBD-Adapter", "Tasten links (Zurück · Home · Lauter · Leiser): " + keyBarState(), "CAN-Suche (Daten der CAN-Box finden)", "Radio-Einstellungen (CAN-Box, Lenkrad, Kamera)"};
+                "Fahrzeugdaten und OBD-Adapter", "Tasten links (Zurück · Home · Lauter · Leiser): " + keyBarState(), "CAN-Suche (Daten der CAN-Box finden)", "Radio-Einstellungen (CAN-Box, Lenkrad, Kamera)", "Sprachtaste: " + voiceKeyState()};
         for (int n = 0; n < items.length; n++) {
             final int which = n;
             TextView b = text(items[n], 24, WHITE, true);
@@ -891,6 +892,7 @@ public class MainActivity extends Activity {
                     if (which == 8) showCarDash();
                     if (which == 10) showCanScan();
                     if (which == 11) showRadioTools();
+                    if (which == 12) showVoiceKey();
                     if (which == 9) {
                         boolean on = KeyBar.wanted(MainActivity.this);
                         if (on && keyBarEnabled()) prefs.edit().putString(KeyBar.PREF, "aus").apply();
@@ -1187,10 +1189,19 @@ public class MainActivity extends Activity {
         return i != null && i.getComponent() != null && i.getComponent().getClassName().endsWith(".Fahrzeugdaten");
     }
 
+    private static boolean isAssistIntent(Intent i) {
+        if (i == null || i.getAction() == null) return false;
+        String a = i.getAction();
+        return a.equals("android.intent.action.ASSIST") || a.equals("android.intent.action.VOICE_COMMAND")
+                || a.equals("android.speech.action.VOICE_SEARCH_HANDS_FREE");
+    }
+
     @Override
     protected void onNewIntent(Intent i) {
         super.onNewIntent(i);
-        if (openedAsCarApp(i)) { setIntent(new Intent()); ui.post(new Runnable() { @Override public void run() { showCarDash(); } }); }
+        if (openedAsCarApp(i)) { setIntent(new Intent()); ui.post(new Runnable() { @Override public void run() { showCarDash(); } }); return; }
+        // Sprachtaste: we are the assistant now -> just bring the ZFix home screen forward, no Gemini/Siri
+        if (isAssistIntent(i)) setIntent(new Intent());
     }
 
     private boolean btPermAsked;
@@ -1298,7 +1309,47 @@ public class MainActivity extends Activity {
     }
 
     /** Opens Android's developer options page directly (skips the build-number taps and the radio's code prompt). */
-    /** True once Android's developer options are unlocked (the hidden setting is then 1). */
+    private boolean isDefaultAssist() {
+        try {
+            String s = Settings.Secure.getString(getContentResolver(), "assistant");
+            if (s != null && s.contains(getPackageName())) return true;
+            String v = Settings.Secure.getString(getContentResolver(), "voice_interaction_service");
+            return v != null && v.contains(getPackageName());
+        } catch (Exception e) { return false; }
+    }
+
+    private String voiceKeyState() {
+        return isDefaultAssist() ? "ZFix (aktiv)" : "auf ZFix legen";
+    }
+
+    /** Helps the user point the steering-wheel voice key at ZFix instead of Gemini/Siri (default-assist app). */
+    private void showVoiceKey() {
+        final LinearLayout content = overlay("Sprachtaste");
+        TextView t = text("", 24, WHITE, false);
+        t.setSingleLine(false);
+        t.setMaxLines(20);
+        t.setLineSpacing(px(8), 1f);
+        t.setText("Die Sprachtaste am Lenkrad öffnet den eingestellten Sprach-Assistenten. Damit sie den ZFix-Startbildschirm öffnet statt Gemini oder Google, wähle ZFix als Assistent-App:\n\n"
+                + "1. Unten auf ASSISTENT-EINSTELLUNG tippen.\n"
+                + "2. Bei „Assistent-App“ bzw. „Assist-App“ auf ZFix stellen (steht evtl. unter „Standard-Apps“).\n"
+                + "3. Zurück. Drück die Sprachtaste: jetzt kommt der ZFix-Startbildschirm.\n\n"
+                + "Findest du den Punkt nicht, geht auch: Einstellungen > Apps > Standard-Apps > Assistent.");
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-1, -2);
+        tl.bottomMargin = px(28);
+        content.addView(t, tl);
+        TextView go = bigButton("ASSISTENT-EINSTELLUNG", 26, 104, content);
+        go.setGravity(Gravity.CENTER);
+        go.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                closeOverlay(content);
+                startAny(new Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),
+                        new Intent("android.settings.MANAGE_DEFAULT_APPS_SETTINGS"),
+                        new Intent(Settings.ACTION_SETTINGS));
+            }
+        });
+    }
+
+    /** True once Android's developer options are unlocked    /** True once Android's developer options are unlocked (the hidden setting is then 1). */
     private boolean devOptionsOn() {
         try {
             return Settings.Global.getInt(getContentResolver(), Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1;

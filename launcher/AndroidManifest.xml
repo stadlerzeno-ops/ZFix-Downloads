@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="ch.zfix.launcher" android:versionCode="26" android:versionName="3.5">
+    package="ch.zfix.launcher" android:versionCode="27" android:versionName="3.6">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="33"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
@@ -43,6 +43,19 @@
                 <category android:name="android.intent.category.HOME"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Sprachtaste am Lenkrad: ZFix als Assistent waehlbar, oeffnet dann den Startbildschirm statt Gemini/Siri -->
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.speech.action.VOICE_SEARCH_HANDS_FREE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
         <!-- vehicle page as its own entry in the app list (Ducato); MainActivity switches it on/off per car -->
