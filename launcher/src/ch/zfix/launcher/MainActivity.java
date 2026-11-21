@@ -1298,13 +1298,67 @@ public class MainActivity extends Activity {
     }
 
     /** Opens Android's developer options page directly (skips the build-number taps and the radio's code prompt). */
-    private void openDevOptions() {
-        Intent[] tries = {
-                new Intent().setClassName("com.android.settings", "com.android.settings.Settings$DevelopmentSettingsDashboardActivity"),
-                new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
-                new Intent(Settings.ACTION_DEVICE_INFO_SETTINGS)};
+    /** True once Android's developer options are unlocked (the hidden setting is then 1). */
+    private boolean devOptionsOn() {
+        try {
+            return Settings.Global.getInt(getContentResolver(), Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1;
+        } catch (Exception e) { return false; }
+    }
+
+    private boolean startAny(Intent... tries) {
         for (Intent i : tries) {
-            try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return; } catch (Exception ignored) { }
+            try { startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return true; } catch (Exception ignored) { }
+        }
+        return false;
+    }
+
+    /**
+     * On the Ducato (NWD) the developer options are locked until the build number is tapped 7x, and the
+     * launcher can't flip the setting itself (no WRITE_SECURE_SETTINGS without adb). So: if they are already
+     * on, open them; otherwise open "About device" and explain the 7 taps.
+     */
+    private void openDevOptions() {
+        if (devOptionsOn() && startAny(
+                new Intent().setClassName("com.android.settings", "com.android.settings.Settings$DevelopmentSettingsDashboardActivity"),
+                new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))) return;
+        showDevHelp();
+    }
+
+    private void showDevHelp() {
+        final LinearLayout content = overlay("Entwickleroptionen");
+        TextView t = text("", 24, WHITE, false);
+        t.setSingleLine(false);
+        t.setMaxLines(20);
+        t.setLineSpacing(px(8), 1f);
+        t.setText(devOptionsOn()
+                ? "Die Entwickleroptionen sind schon frei. Dieses Radio hat dafür aber keine eigene Seite. Öffne sie über Einstellungen und tippe oben auf die Suche „Entwickleroptionen“."
+                : "Dieses Radio gibt die Entwickleroptionen nicht per Knopf frei. Du schaltest sie wie bei jedem Android-Gerät von Hand frei:\n\n"
+                + "1. Unten auf GERÄTEINFO ÖFFNEN tippen.\n"
+                + "2. Ganz nach unten zu „Build-Nummer“ gehen.\n"
+                + "3. Sieben Mal schnell auf „Build-Nummer“ tippen, bis „Sie sind jetzt Entwickler“ erscheint. Wird ein Code verlangt, ist es der PIN/das Muster des Radios, meist keiner.\n"
+                + "4. Zurück. Die Entwickleroptionen sind jetzt in den Einstellungen.\n\n"
+                + "Danach brauchst du sie für ZFix eigentlich nicht. Launcher, DAB und Tasten laufen ohne.");
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-1, -2);
+        tl.bottomMargin = px(28);
+        content.addView(t, tl);
+        TextView go = bigButton(devOptionsOn() ? "EINSTELLUNGEN ÖFFNEN" : "GERÄTEINFO ÖFFNEN", 28, 110, content);
+        go.setGravity(Gravity.CENTER);
+        go.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                closeOverlay(content);
+                startAny(new Intent(Settings.ACTION_DEVICE_INFO_SETTINGS), new Intent(Settings.ACTION_SETTINGS));
+            }
+        });
+        if (!devOptionsOn()) {
+            TextView s2 = bigButton("ODER: WERKSMENÜ (CODE 1617)", 24, 92, content);
+            s2.setGravity(Gravity.CENTER);
+            s2.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    closeOverlay(content);
+                    startAny(new Intent().setClassName("com.nwd.factory.setting", "com.nwd.factory.setting.FactorySettingActivity"),
+                            new Intent().setClassName("com.nwd.factory.setting", "com.nwd.factory.setting.LoginActivity"));
+                }
+            });
         }
     }
 
