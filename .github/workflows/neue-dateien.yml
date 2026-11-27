@@ -1,0 +1,43 @@
+# Lädt Dateien aus dem Ordner neu/ in das neueste Release hoch (ersetzt gleichnamige Dateien),
+# aktualisiert SHA256SUMS.txt und entfernt den Ordner danach wieder aus dem Repo.
+# So bleiben die festen Links .../releases/latest/download/<Datei> gültig.
+name: Neue Dateien ins Release
+on:
+  push:
+    branches: [main]
+    paths: ['neu/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ins neueste Release hochladen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          shopt -s nullglob
+          files=(neu/*)
+          [ ${#files[@]} -gt 0 ] || { echo "Nichts in neu/"; exit 0; }
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName -q .tagName)
+          echo "Release: $tag"
+          gh release upload "$tag" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          mkdir -p alt
+          gh release download "$tag" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS.txt --dir alt || touch alt/SHA256SUMS.txt
+          for f in "${files[@]}"; do
+            n=$(basename "$f")
+            grep -v "  $n\$" alt/SHA256SUMS.txt > alt/s.tmp || true
+            mv alt/s.tmp alt/SHA256SUMS.txt
+            (cd neu && sha256sum "$n") >> alt/SHA256SUMS.txt
+          done
+          gh release upload "$tag" alt/SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
+      - name: Ordner neu/ wieder leeren
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898+github-actions[bot]@users.noreply.github.com"
+          git rm -r -q neu
+          git commit -m "neu/ ins Release übernommen"
+          git push
